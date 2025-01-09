@@ -1,0 +1,8 @@
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.1.2+cu121; python_version >= "3.11"
+torchvision==0.16.2+cu121; python_version >= "3.11"
+
+faster-coco-eval>=1.6.5
+PyYAML
+calflops >=0.3.0, <1.0.0
+transformers>=4.38.0, <5.0.0
