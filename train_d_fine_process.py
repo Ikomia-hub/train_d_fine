@@ -2,17 +2,16 @@ import copy
 import os
 from datetime import datetime
 import yaml
-import torch
 
 from ikomia import core, dataprocess
 from ikomia.core.task import TaskParam
 from ikomia.dnn import dnntrain
+
 from train_d_fine.utils.ikutils import prepare_dataset
 from train_d_fine.utils.download_model import get_model_path
 
-
 from train_d_fine.D_FINE.src.misc import dist_utils
-from train_d_fine.D_FINE.src.core import YAMLConfig, yaml_utils
+from train_d_fine.D_FINE.src.core import YAMLConfig
 from train_d_fine.D_FINE.src.solver import TASKS
 
 
@@ -157,20 +156,20 @@ class TrainDFine(dnntrain.TrainProcess):
             with open(training_config, 'w') as file:
                 yaml.dump(cfg, file)
 
-        # # Disable pretrained option if HGNetv2 is in the configuration
-        # if 'HGNetv2' in cfg.yaml_cfg:
-        #     cfg.yaml_cfg['HGNetv2']['pretrained'] = False
+        # Disable pretrained option if HGNetv2 is in the configuration
+        if 'HGNetv2' in cfg.yaml_cfg:
+            cfg.yaml_cfg['HGNetv2']['pretrained'] = False
 
-        # # Initialize solver
-        # solver = TASKS[cfg.yaml_cfg['task']](cfg)
+        # Initialize solver
+        solver = TASKS[cfg.yaml_cfg['task']](cfg)
 
-        # # Train or validate
-        # if param.cfg.get('test_only', False):
-        #     solver.val()
-        # else:
-        #     solver.fit()
+        # Train or validate
+        if param.cfg.get('test_only', False):
+            solver.val()
+        else:
+            solver.fit()
 
-        # dist_utils.cleanup()
+        dist_utils.cleanup()
 
         self.emit_step_progress()
         self.end_task_run()
