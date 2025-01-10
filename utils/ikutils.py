@@ -1,151 +1,280 @@
-import random
-import shutil
-import yaml
 import os
+import json
+import shutil
+import random
+import yaml  # pip install pyyaml
 
 
-def prepare_dataset(ikdataset, dataset_folder, split_ratio):
-    # TODO: if source format is already YoloV5 we just have to get folder
-    if _dataset_exists(ikdataset, dataset_folder, split_ratio):
-        return dataset_folder + os.sep + "dataset.yaml"
+def create_coco_format_dict(images_list, categories_map):
+    """
+    Given a list of image dicts (each with 'annotations') and a categories_map
+    from the Deep Learning Dataset Ikomia format, this function will
+    convert them into a standard COCO-format dictionary.
+    """
+    coco_images = []
+    coco_annotations = []
 
-    train_img_folder = dataset_folder + os.sep + "images" + os.sep + "train"
-    val_img_folder = dataset_folder + os.sep + "images" + os.sep + "val"
-    train_label_folder = dataset_folder + os.sep + "labels" + os.sep + "train"
-    val_label_folder = dataset_folder + os.sep + "labels" + os.sep + "val"
-    os.makedirs(train_img_folder, exist_ok=True)
-    os.makedirs(val_img_folder, exist_ok=True)
-    os.makedirs(train_label_folder, exist_ok=True)
-    os.makedirs(val_label_folder, exist_ok=True)
+    # Convert category map -> COCO categories list
+    coco_categories = []
+    for cat_id, cat_name in categories_map.items():
+        coco_categories.append({
+            "id": cat_id,
+            "name": cat_name
+        })
 
-    try:
-        images = ikdataset.data["images"]
-    except:
-        raise Exception("Input dataset is empty!")
+    annotation_id = 0
+    for img_info in images_list:
+        # Build COCO "images" entry
+        coco_images.append({
+            "id": img_info["image_id"],
+            "file_name": os.path.basename(img_info["filename"]),
+            "width": img_info["width"],
+            "height": img_info["height"]
+        })
 
-    val_size = int((1-split_ratio) * len(images))
-    val_indices = random.sample(range(len(images)), k=val_size)
-    index = 0
+        # Build COCO "annotations" entries
+        for ann in img_info["annotations"]:
+            x, y, w, h = ann["bbox"]  # assume these are already [x, y, w, h]
+            area = w * h
+            coco_annotations.append({
+                "id": annotation_id,
+                "image_id": img_info["image_id"],
+                "category_id": ann["category_id"],
+                "bbox": [x, y, w, h],
+                "iscrowd": ann["iscrowd"],
+                "area": area,
+                "segmentation": ann.get("segmentation_poly", [])
+            })
+            annotation_id += 1
 
-    for img in images:
-        src_filename = img["filename"]
-
-        if index in val_indices:
-            dst_filename = val_img_folder + os.sep + \
-                os.path.basename(src_filename)
-            shutil.copy(src_filename, dst_filename)
-            dst_filename = dst_filename.replace(
-                "images" + os.sep + "val", "labels" + os.sep + "val", 1)
-            dst_filename = dst_filename.replace(
-                '.' + dst_filename.split('.')[-1], '.txt')
-            _create_image_labels(
-                dst_filename, img["annotations"], img["width"], img["height"])
-        else:
-            dst_filename = train_img_folder + \
-                os.sep + os.path.basename(src_filename)
-            shutil.copy(src_filename, dst_filename)
-            dst_filename = dst_filename.replace(
-                "images" + os.sep + "train", "labels" + os.sep + "train", 1)
-            dst_filename = dst_filename.replace(
-                '.' + dst_filename.split('.')[-1], '.txt')
-            _create_image_labels(
-                dst_filename, img["annotations"], img["width"], img["height"])
-
-        index += 1
-
-    categories = ikdataset.data["metadata"]["category_names"]
-    return _create_dataset_yaml(dataset_folder, train_img_folder, val_img_folder, categories)
+    return {
+        "images": coco_images,
+        "annotations": coco_annotations,
+        "categories": coco_categories
+    }
 
 
-def _dataset_exists(ikdataset, dataset_folder, split_ratio):
-    dataset_yaml = dataset_folder + os.sep + "dataset.yaml"
-
-    if not os.path.exists(dataset_yaml):
-        return False
-
-    # Dataset exist
-    with open(dataset_yaml, "r") as f:
+def _load_dataset_yaml(yaml_path):
+    """
+    Reads dataset.yaml and returns a dictionary with:
+      {
+        "train_annot_file": str,
+        "train_img_dir": str,
+        "val_annot_file": str,
+        "val_img_dir": str,
+        "nc": int,
+        "names": list of str
+      }
+    """
+    with open(yaml_path, "r", encoding="utf-8") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
-        # Check folder structure
-        if not os.path.exists(data["train"]) or not os.path.exists(data["val"]):
-            f.close()
+    # Return a dict with the 6 keys we need.
+    return {
+        "train_annot_file": data["train_annotation_file"],
+        "train_img_dir": data["train_image_dir"],
+        "val_annot_file": data["val_annotation_file"],
+        "val_img_dir": data["val_image_dir"],
+        "nc": data["nc"],
+        "names": data["names"]
+    }
+
+
+def _create_dataset_yaml(
+    dataset_folder,
+    train_annot_file,
+    train_img_dir,
+    val_annot_file,
+    val_img_dir,
+    categories_map
+):
+    """
+    Creates dataset.yaml containing the 4 paths plus nc and names:
+      train_annotation_file, train_image_dir,
+      val_annotation_file,   val_image_dir,
+      nc,                    names
+    """
+    yaml_data = {
+        "train_annotation_file": train_annot_file,
+        "train_image_dir": train_img_dir,
+        "val_annotation_file": val_annot_file,
+        "val_image_dir": val_img_dir,
+        "nc": len(categories_map),
+        "names": list(categories_map.values())
+    }
+
+    yaml_path = os.path.join(dataset_folder, "dataset.yaml")
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        yaml.dump(yaml_data, f, sort_keys=False)
+    return yaml_path
+
+
+def _dataset_exists(data_dict, dataset_folder, split_ratio):
+    """
+    check to see if a COCO-style dataset folder already exists
+    and matches the data in 'data_dict' (including class count, image count, etc.).
+    If mismatch is found, the entire 'dataset_folder' will be removed to rebuild.
+    """
+
+    dataset_yaml_path = os.path.join(dataset_folder, "dataset.yaml")
+    print("Checking dataset.yaml at:", dataset_yaml_path)
+
+    if not os.path.isfile(dataset_yaml_path):
+        print("dataset.yaml not found at that absolute path.")
+        return False
+
+    try:
+        # Load the existing dataset.yaml
+        existing_info = _load_dataset_yaml(dataset_yaml_path)
+
+        # Check if the annotation files exist
+        train_annot_file = existing_info["train_annot_file"]
+        val_annot_file = existing_info["val_annot_file"]
+        if not os.path.exists(train_annot_file) or not os.path.exists(val_annot_file):
             shutil.rmtree(dataset_folder)
             return False
 
-        train_label_path = data["train"].replace(os.sep + "images" + os.sep + "train",
-                                                 os.sep + "labels" + os.sep + "train",
-                                                 1)
-        val_label_path = data["val"].replace(os.sep + "images" + os.sep + "val",
-                                             os.sep + "labels" + os.sep + "val",
-                                             1)
-
-        if not os.path.exists(train_label_path) or not os.path.exists(val_label_path):
-            f.close()
+        # Check if the image folders exist
+        train_img_dir = existing_info["train_img_dir"]
+        val_img_dir = existing_info["val_img_dir"]
+        if not os.path.exists(train_img_dir) or not os.path.exists(val_img_dir):
             shutil.rmtree(dataset_folder)
             return False
 
-        # check number of classes
-        categories = ikdataset.data["metadata"]["category_names"]
-
-        if len(categories) != data["nc"]:
-            f.close()
+        # Check if the number of classes (nc) matches
+        categories_map = data_dict["metadata"]["category_names"]
+        if len(categories_map) != existing_info["nc"]:
             shutil.rmtree(dataset_folder)
             return False
 
-        if len(categories) != len(data["names"]):
-            f.close()
+        # Check if len(names) matches
+        if len(categories_map) != len(existing_info["names"]):
             shutil.rmtree(dataset_folder)
             return False
 
-        # check number of images and labels
-        images = ikdataset.data["images"]
+        # Check the number of images in train/val folders
+        images = data_dict["images"]
         val_size = int((1 - split_ratio) * len(images))
-        train_size = len(images) - val_size
+        train_size = int(len(images) - val_size)
 
-        train_images_count = len(os.listdir(data["train"]))
-        train_labels_count = len(os.listdir(train_label_path))
+        train_files_count = int(len(os.listdir(train_img_dir)))
+        val_files_count = int(len(os.listdir(val_img_dir)))
 
-        if train_images_count != train_size or train_labels_count != train_size:
-            f.close()
+        if train_files_count != train_size or val_files_count != val_size:
             shutil.rmtree(dataset_folder)
             return False
 
-        val_images_count = len(os.listdir(data["val"]))
-        val_labels_count = len(os.listdir(val_label_path))
+        # If everything checks out, return True
+        return True
 
-        if val_images_count != val_size or val_labels_count != val_size:
-            f.close()
-            shutil.rmtree(dataset_folder)
-            return False
-
-    print("A valid YoloV5 dataset structure already exists, skip building a new one")
-    return True
+    except Exception as e:
+        # If any error arises, we remove and return False
+        print(f"Error reading or validating existing dataset: {e}")
+        shutil.rmtree(dataset_folder)
+        return False
 
 
-def _create_image_labels(filename, annotations, img_w, img_h):
-    with open(filename, "w+") as f:
-        for ann in annotations:
-            box = ann['bbox']
-            cx = (box[0] + (box[2] / 2)) / img_w
-            cy = (box[1] + (box[3] / 2)) / img_h
-            width = box[2] / img_w
-            height = box[3] / img_h
-            f.write('%d ' % ann["category_id"])
-            f.write('%f ' % cx)
-            f.write('%f ' % cy)
-            f.write('%f ' % width)
-            f.write('%f\n' % height)
+def prepare_dataset(data_dict, dataset_folder, split_ratio):
+    """
+    Main function that:
+     1) Checks if a valid dataset exists (_dataset_exists).
+     2) If valid, prints the message, loads dataset.yaml, returns the 6-key dict.
+     3) Otherwise, splits data_dict => train/valid, creates COCO annotation files,
+        copies images, writes dataset.yaml, returns the 6-key dict.
 
+    The returned dict has:
+        {
+          "train_annot_file": str,
+          "train_img_dir": str,
+          "val_annot_file": str,
+          "val_img_dir": str,
+          "nc": int,
+          "names": list of str
+        }
+    """
 
-def _create_dataset_yaml(dataset_folder, train_folder, val_folder, categories):
-    dataset = {"train": train_folder,
-               "val": val_folder,
-               "nc": len(categories),
-               "names": list(categories.values())}
+    # 1) Check if a valid dataset already exists
+    if _dataset_exists(data_dict, dataset_folder, split_ratio):
+        # Show message, load and return existing dataset.yaml info
+        print("A valid dataset structure already exists, skip building a new one.")
+        existing_dataset_info = _load_dataset_yaml(
+            os.path.join(dataset_folder, "dataset.yaml")
+        )
+        return existing_dataset_info
 
-    dataset_yaml_file = dataset_folder + os.sep + "dataset.yaml"
-    with open(dataset_yaml_file, "w") as f:
-        yaml.dump(dataset, f, default_flow_style=True, sort_keys=False)
+    # 2) Otherwise, build from scratch
+    print("Preparing COCO-style dataset...")
 
-    return dataset_yaml_file
+    # Make sure dataset folder exists (re-created if just removed)
+    os.makedirs(dataset_folder, exist_ok=True)
+
+    # Subfolders
+    train_img_dir = os.path.join(dataset_folder, "train", "images")
+    val_img_dir = os.path.join(dataset_folder, "valid", "images")
+    os.makedirs(train_img_dir, exist_ok=True)
+    os.makedirs(val_img_dir, exist_ok=True)
+
+    # Shuffle images before splitting if desired
+    images_list = data_dict["images"]
+    random.seed(42)
+    random.shuffle(images_list)
+
+    split_index = int(len(images_list) * split_ratio)
+    train_images_list = images_list[:split_index]
+    val_images_list = images_list[split_index:]
+
+    # Convert to COCO
+    categories_map = data_dict["metadata"]["category_names"]
+    train_coco_dict = create_coco_format_dict(
+        train_images_list, categories_map)
+    val_coco_dict = create_coco_format_dict(val_images_list, categories_map)
+
+    # File paths for COCO JSON
+    train_annot_file = os.path.join(
+        dataset_folder, "train", "train_coco_annotation.json")
+    val_annot_file = os.path.join(
+        dataset_folder, "valid", "valid_coco_annotation.json")
+
+    # Write COCO annotations
+    with open(train_annot_file, "w", encoding="utf-8") as f:
+        json.dump(train_coco_dict, f, indent=2)
+    with open(val_annot_file, "w", encoding="utf-8") as f:
+        json.dump(val_coco_dict, f, indent=2)
+
+    # Copy images
+    for img_info in train_images_list:
+        src = img_info["filename"]
+        dst = os.path.join(train_img_dir, os.path.basename(src))
+        shutil.copy2(src, dst)
+    for img_info in val_images_list:
+        src = img_info["filename"]
+        dst = os.path.join(val_img_dir, os.path.basename(src))
+        shutil.copy2(src, dst)
+
+    print("Dataset successfully split and converted to COCO format.")
+    print(
+        f"Train images: {len(train_images_list)}, Valid images: {len(val_images_list)}")
+    print(f"Train annotations saved to: {train_annot_file}")
+    print(f"Valid annotations saved to: {val_annot_file}")
+
+    # Create dataset.yaml
+    dataset_yaml_path = _create_dataset_yaml(
+        dataset_folder,
+        train_annot_file,
+        train_img_dir,
+        val_annot_file,
+        val_img_dir,
+        categories_map
+    )
+
+    # Build the 6-key dict to return
+    result_dict = {
+        "train_annot_file": train_annot_file,
+        "train_img_dir": train_img_dir,
+        "val_annot_file": val_annot_file,
+        "val_img_dir": val_img_dir,
+        "nc": len(categories_map),
+        "names": list(categories_map.values())
+    }
+
+    return result_dict

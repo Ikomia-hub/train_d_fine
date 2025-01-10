@@ -97,13 +97,13 @@ class TrainDFine(dnntrain.TrainProcess):
     def run(self):
         param = self.get_param_object()
         dataset_input = self.get_input(0)
-        print(dataset_input.data)
+
         # Prepare dataset
-        print("Preparing dataset...")
-        dataset_yaml = prepare_dataset(
-            dataset_input, param.cfg["dataset_folder"],
-            param.cfg["dataset_split_ratio"]
-        )
+        dataset_yaml_info = prepare_dataset(dataset_input.data,
+                                            param.cfg["dataset_folder"],
+                                            param.cfg["dataset_split_ratio"]
+                                            )
+        print(f"\nFinal dataset info: {dataset_yaml_info}")
 
         # Initialize distributed training
         dist_utils.setup_distributed(print_rank=0, print_method='builtin')
@@ -150,11 +150,24 @@ class TrainDFine(dnntrain.TrainProcess):
             cfg.yaml_cfg['val_dataloader']['dataset']['transforms']['ops'][0]['size'] = [
                 param.cfg["input_size"], param.cfg["input_size"]]
 
+            # Set dataset paths and number of classes
+            cfg.yaml_cfg['train_dataloader']['dataset']['img_folder'] = dataset_yaml_info["train_img_dir"]
+            cfg.yaml_cfg['train_dataloader']['dataset']['ann_file'] = dataset_yaml_info["train_annot_file"]
+            cfg.yaml_cfg['val_dataloader']['dataset']['img_folder'] = dataset_yaml_info["val_img_dir"]
+            cfg.yaml_cfg['val_dataloader']['dataset']['ann_file'] = dataset_yaml_info["val_annot_file"]
+            cfg.yaml_cfg['num_classes'] = dataset_yaml_info["nc"]
+
             # Save new configuration file (used for inference)
             training_config = os.path.join(
                 output_folder, f'config_{self.experiment_name}.yaml')
             with open(training_config, 'w') as file:
                 yaml.dump(cfg, file)
+
+            # Save class names for inference
+            class_names = dataset_yaml_info["names"]
+            with open(os.path.join(output_folder, 'class_names.txt'), 'w') as file:
+                for name in class_names:
+                    file.write(f"{name}\n")
 
         # Disable pretrained option if HGNetv2 is in the configuration
         if 'HGNetv2' in cfg.yaml_cfg:
