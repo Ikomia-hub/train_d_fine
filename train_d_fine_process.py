@@ -69,6 +69,8 @@ class TrainDFine(dnntrain.TrainProcess):
             self.set_param_object(TrainDFineParam())
         else:
             self.set_param_object(copy.deepcopy(param))
+
+        self.enable_mlflow(True)
         self.cfg_folder = os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "configs")
         self.experiment_name = None

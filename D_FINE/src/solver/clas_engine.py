@@ -15,7 +15,8 @@ def train_one_epoch(model: nn.Module, criterion: nn.Module, dataloader, optimize
     model.train()
 
     metric_logger = MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    metric_logger.add_meter('lr', SmoothedValue(
+        window_size=1, fmt='{value:.6f}'))
     print_freq = 100
     header = 'Epoch: [{}]'.format(epoch)
 
@@ -33,7 +34,8 @@ def train_one_epoch(model: nn.Module, criterion: nn.Module, dataloader, optimize
         if ema is not None:
             ema.update(model)
 
-        loss_reduced_values = {k: v.item() for k, v in reduce_dict({'loss': loss}).items()}
+        loss_reduced_values = {k: v.item()
+                               for k, v in reduce_dict({'loss': loss}).items()}
         metric_logger.update(**loss_reduced_values)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
@@ -42,7 +44,6 @@ def train_one_epoch(model: nn.Module, criterion: nn.Module, dataloader, optimize
 
     stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
     return stats
-
 
 
 @torch.no_grad()
