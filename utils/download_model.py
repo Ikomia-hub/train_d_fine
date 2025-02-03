@@ -1,4 +1,4 @@
-from infer_d_fine.D_FINE.src.core import YAMLConfig
+from train_d_fine.D_FINE.src.core import YAMLConfig
 import os
 import urllib.request
 import torch
@@ -17,16 +17,18 @@ def get_config_path(root_dir, model_name, dataset):
 
     # Determine the appropriate configuration file based on the dataset
     if dataset == "obj2coco":
-        config_file = os.path.join(root_config, "objects365", f"dfine_hgnetv2_{model_size}_obj2coco.yml")
+        config_file = os.path.join(
+            root_config, "objects365", f"dfine_hgnetv2_{model_size}_obj2coco.yml")
     elif dataset == "coco":
-        config_file = os.path.join(root_config, f"dfine_hgnetv2_{model_size}_coco.yml")
+        config_file = os.path.join(
+            root_config, f"dfine_hgnetv2_{model_size}_coco.yml")
     elif dataset == "obj365":
-        config_file = os.path.join(root_config, "objects365", f"dfine_hgnetv2_{model_size}_obj365.yml")
+        config_file = os.path.join(
+            root_config, "objects365", f"dfine_hgnetv2_{model_size}_obj365.yml")
     else:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
     return config_file
-        
 
 
 def get_model_path(param):
@@ -72,9 +74,3 @@ def get_model_path(param):
             return None
 
     return model_weights
-
-
-
-
-
-

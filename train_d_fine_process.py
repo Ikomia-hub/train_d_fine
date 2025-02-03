@@ -218,7 +218,7 @@ class TrainDFineFactory(dataprocess.CTaskFactory):
         self.info.documentation_link = "https://arxiv.org/pdf/2410.13842"
 
         # Code source repository
-        self.info.repository = "https://github.com/Ikomia-hub/infer_d_fine"
+        self.info.repository = "https://github.com/Ikomia-hub/train_d_fine"
         self.info.original_repository = "https://github.com/Peterande/D-FINE"
 
         # Keywords used for search
