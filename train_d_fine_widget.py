@@ -44,6 +44,10 @@ class TrainDFineWidget(core.CWorkflowTaskWidget):
         self.spin_epochs = pyqtutils.append_spin(
             self.grid_layout, "Epochs", self.parameters.cfg["epochs"])
 
+        # Epochs
+        self.spin_patience = pyqtutils.append_spin(
+            self.grid_layout, "Patience", self.parameters.cfg["patience"])
+
         # Batch size
         self.spin_batch = pyqtutils.append_spin(
             self.grid_layout, "Batch size", self.parameters.cfg["batch_size"])
@@ -104,6 +108,7 @@ class TrainDFineWidget(core.CWorkflowTaskWidget):
         self.parameters.cfg["model_name"] = self.combo_model.currentText()
         self.parameters.cfg["dataset_folder"] = self.browse_dataset_folder.path
         self.parameters.cfg["epochs"] = self.spin_epochs.value()
+        self.parameters.cfg["patience"] = self.spin_patience.value()
         self.parameters.cfg["input_size"] = self.spin_input_size.value()
         self.parameters.cfg["batch_size"] = self.spin_batch.value()
         self.parameters.cfg["dataset_split_ratio"] = self.spin_train_test_split.value(

@@ -73,11 +73,12 @@ Ikomia Studio offers a friendly UI with the same features as the API.
     - dfine_x
 - `batch_size` (int) - default '8': Number of samples processed before the model is updated.
 - `epochs` (int) - default '100': Number of complete passes through the training dataset.
+- `patience` (int) - default '300' : 
 - `dataset_split_ratio` (float) – default '0.9': Divide the dataset into train and evaluation sets ]0, 1[.
 - `input_size` (int) - default '640': Size of the input image.
 - `weight_decay` (float) - default '0.000125': Amount of weight decay, regularization method.
 - `workers` (int) - default '0': Number of worker threads for data loading (per RANK if DDP).
-- `lr` (float) - default '0.00025': Initial learning rate . Adjusting this value is crucial for the optimization process, influencing how rapidly model weights are updated.
+- `lr` (float) - default '0.00025': Initial learning rate. Adjusting this value is crucial for the optimization process, influencing how rapidly model weights are updated.
 - `output_folder` (str, *optional*): path to where the model will be saved. 
 - `config_file` (str, *optional*): path to the training config file .yaml. Using a [config file](https://github.com/Ikomia-hub/train_d_fine/configs/template/config_template.yaml) allows you to set all the train settings available. 
 
