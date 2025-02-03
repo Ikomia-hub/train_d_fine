@@ -73,7 +73,7 @@ Ikomia Studio offers a friendly UI with the same features as the API.
     - dfine_x
 - `batch_size` (int) - default '8': Number of samples processed before the model is updated.
 - `epochs` (int) - default '100': Number of complete passes through the training dataset.
-- `patience` (int) - default '300' : 
+- `patience` (int) - default '300' : Number of epochs to wait without improvement in validation metrics before early stopping the training. Helps prevent overfitting by stopping training when performance plateaus.
 - `dataset_split_ratio` (float) – default '0.9': Divide the dataset into train and evaluation sets ]0, 1[.
 - `input_size` (int) - default '640': Size of the input image.
 - `weight_decay` (float) - default '0.000125': Amount of weight decay, regularization method.
