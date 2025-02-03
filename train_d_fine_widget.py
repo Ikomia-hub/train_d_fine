@@ -26,7 +26,6 @@ class TrainDFineWidget(core.CWorkflowTaskWidget):
         # Model name
         self.combo_model = pyqtutils.append_combo(
             self.grid_layout, "Model name")
-        self.combo_model.addItem("dfine_n")
         self.combo_model.addItem("dfine_s")
         self.combo_model.addItem("dfine_m")
         self.combo_model.addItem("dfine_l")

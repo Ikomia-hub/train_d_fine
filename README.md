@@ -67,8 +67,7 @@ Ikomia Studio offers a friendly UI with the same features as the API.
 
 
 ## :pencil: Set algorithm parameters
-- `model_name` (str) - default 'dfine_m': Name of the D-FINE pre-trained model. Other model available:
-    - dfine_n
+- `model_name` (str) - default 'dfine_m': Name of the D-FINE pre-trained model on Objects365 (Best generalization). Other model available:
     - dfine_s
     - dfine_l
     - dfine_x
