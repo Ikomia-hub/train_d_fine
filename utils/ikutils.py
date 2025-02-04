@@ -41,7 +41,7 @@ def create_coco_format_dict(images_list, categories_map):
                 "image_id": img_info["image_id"],
                 "category_id": ann["category_id"],
                 "bbox": [x, y, w, h],
-                "iscrowd": ann["iscrowd"],
+                "iscrowd": ann.get("iscrowd", 0),  # Default to 0 if missing
                 "area": area,
                 "segmentation": ann.get("segmentation_poly", [])
             })
