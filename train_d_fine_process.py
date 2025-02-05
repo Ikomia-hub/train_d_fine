@@ -28,8 +28,7 @@ class TrainDFineParam(TaskParam):
         self.cfg["dataset_folder"] = dataset_folder
         self.cfg["model_name"] = "dfine_m"
         self.cfg["model_weight_file"] = ""
-        self.cfg["epochs"] = 80
-        self.cfg["patience"] = 300
+        self.cfg["epochs"] = 50
         self.cfg["batch_size"] = 6
         self.cfg["input_size"] = 640
         self.cfg["dataset_split_ratio"] = 0.9
@@ -45,7 +44,6 @@ class TrainDFineParam(TaskParam):
         self.cfg["model_name"] = str(param_map["model_name"])
         self.cfg["model_weight_file"] = str(param_map["model_weight_file"])
         self.cfg["epochs"] = int(param_map["epochs"])
-        self.cfg["patience"] = int(param_map["patience"])
         self.cfg["batch_size"] = int(param_map["batch_size"])
         self.cfg["input_size"] = int(param_map["input_size"])
         self.cfg["workers"] = int(param_map["workers"])
@@ -134,7 +132,7 @@ class TrainDFine(dnntrain.TrainProcess):
             cfg = YAMLConfig(
                 cfg_file,
                 output_dir=output_folder,
-                epoches=param.cfg["patience"],
+                epoches=param.cfg["epochs"],
                 tuning=model_weights)
 
             # Modify batch size, learning rate, weight decay, workers, image size
