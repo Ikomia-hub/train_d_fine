@@ -205,7 +205,7 @@ def evaluate(
 ):
     """
     Evaluate the model on the given data_loader, update the coco_evaluator,
-    and log metrics to MLflow if installed.
+    and log detailed metrics to MLflow including all COCO mAPs and Average Precision/Recall metrics.
     """
     model.eval()
     criterion.eval()
@@ -243,39 +243,69 @@ def evaluate(
 
     if coco_evaluator is not None:
         coco_evaluator.synchronize_between_processes()
-        # Accumulate predictions from all images
         coco_evaluator.accumulate()
         coco_evaluator.summarize()
 
-    # Gather final stats
     stats = {}
-    # If you have other metrics in metric_logger, collect them
-    # stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-    # Log coco metrics
-    if coco_evaluator is not None:
-        if 'bbox' in iou_types and coco_evaluator.coco_eval.get('bbox'):
-            stats['coco_eval_bbox'] = coco_evaluator.coco_eval['bbox'].stats.tolist()
-        if 'segm' in iou_types and coco_evaluator.coco_eval.get('segm'):
-            stats['coco_eval_masks'] = coco_evaluator.coco_eval['segm'].stats.tolist()
+    # Detailed COCO evaluation metrics logging
+    if coco_evaluator is not None and mlflow and dist_utils.is_main_process():
+        for iou_type in iou_types:
+            if iou_type not in coco_evaluator.coco_eval:
+                continue
 
-    # Optionally log these stats to MLflow
-    if mlflow and dist_utils.is_main_process():
-        if epoch is not None:
-            # log with step as 'epoch'
-            mlflow.log_metrics(
-                {f"eval_{k}": v for k, v in stats.items() if isinstance(v, float)},
-                step=epoch
-            )
-            # For lists like mAP array, you can either log them individually
-            # or omit them if they are not scalar.
-            # E.g. if stats['coco_eval_bbox'] is a list of floats, do:
-            if 'coco_eval_bbox' in stats:
-                for i, val in enumerate(stats['coco_eval_bbox']):
-                    mlflow.log_metric(f"coco_eval_bbox_{i}", val, step=epoch)
-        else:
-            # If epoch is None, log at step=0 or some fallback
-            mlflow.log_metrics(
-                {f"eval_{k}": v for k, v in stats.items() if isinstance(v, float)})
+            eval_results = coco_evaluator.coco_eval[iou_type].stats.tolist()
+            stats[f'coco_eval_{iou_type}'] = eval_results
+
+            # Map COCO metrics to MLflow-compliant names, matching exact order from COCO output
+            metric_descriptions = [
+                ('AP_all_IoU_50_95', 'AP all IoU=0.50:0.95'),
+                ('AP_all_IoU_50', 'AP all IoU=0.50'),
+                ('AP_all_IoU_75', 'AP all IoU=0.75'),
+                ('AP_small', 'AP small objects'),
+                ('AP_medium', 'AP medium objects'),
+                ('AP_large', 'AP large objects'),
+                ('AR_1_all', 'AR maxDets=1'),
+                ('AR_10_all', 'AR maxDets=10'),
+                ('AR_100_all', 'AR maxDets=100'),
+                ('AR_100_small', 'AR small objects'),
+                ('AR_100_medium', 'AR medium objects'),
+                ('AR_100_large', 'AR large objects'),
+                ('AR_100_IoU_50', 'AR IoU=0.50'),
+                ('AR_100_IoU_75', 'AR IoU=0.75')
+            ]
+
+            # Log each metric with its description
+            for (metric_name, metric_desc), value in zip(metric_descriptions, eval_results):
+                metric_key = f"{iou_type}_{metric_name}"
+                if epoch is not None:
+                    mlflow.log_metric(metric_key, value, step=epoch)
+                else:
+                    mlflow.log_metric(metric_key, value)
+
+                # For negative values (like -1.000 for small objects when none present),
+                # log an additional flag metric
+                if value < 0:
+                    flag_key = f"{iou_type}_{metric_name}_no_instances"
+                    if epoch is not None:
+                        mlflow.log_metric(flag_key, 1, step=epoch)
+                    else:
+                        mlflow.log_metric(flag_key, 1)
+
+            # Log key summary metrics
+            if epoch is not None:
+                # Primary mAP (IoU=0.50:0.95)
+                mlflow.log_metric(f"{iou_type}_mAP",
+                                  eval_results[0], step=epoch)
+                # mAP at IoU=0.50
+                mlflow.log_metric(f"{iou_type}_mAP50",
+                                  eval_results[1], step=epoch)
+                # mAP at IoU=0.75
+                mlflow.log_metric(f"{iou_type}_mAP75",
+                                  eval_results[2], step=epoch)
+            else:
+                mlflow.log_metric(f"{iou_type}_mAP", eval_results[0])
+                mlflow.log_metric(f"{iou_type}_mAP50", eval_results[1])
+                mlflow.log_metric(f"{iou_type}_mAP75", eval_results[2])
 
     return stats, coco_evaluator
