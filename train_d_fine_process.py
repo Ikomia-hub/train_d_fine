@@ -145,13 +145,14 @@ class TrainDFine(dnntrain.TrainProcess):
             cfg.yaml_cfg['train_dataloader']['num_workers'] = param.cfg["workers"]
             cfg.yaml_cfg['val_dataloader']['num_workers'] = param.cfg["workers"]
 
-            cfg.yaml_cfg['eval_spatial_size'] = [
-                param.cfg["input_size"], param.cfg["input_size"]]
-            cfg.yaml_cfg['train_dataloader']['collate_fn']['base_size'] = param.cfg["input_size"]
-            cfg.yaml_cfg['train_dataloader']['dataset']['transforms']['ops'][5]['size'] = [
-                param.cfg["input_size"], param.cfg["input_size"]]
-            cfg.yaml_cfg['val_dataloader']['dataset']['transforms']['ops'][0]['size'] = [
-                param.cfg["input_size"], param.cfg["input_size"]]
+            # Set input size
+            if param.cfg["input_size"] % 128 != 0:
+                size = param.cfg["input_size"] // 128 * 128
+            print("Updating input size to {} to be a multiple of 128".format(size))
+            cfg.yaml_cfg['eval_spatial_size'] = size, size
+            cfg.yaml_cfg['train_dataloader']['collate_fn']['base_size'] = size
+            cfg.yaml_cfg['train_dataloader']['dataset']['transforms']['ops'][5]['size'] = size, size
+            cfg.yaml_cfg['val_dataloader']['dataset']['transforms']['ops'][0]['size'] = size, size
 
             # Set dataset paths and number of classes
             cfg.yaml_cfg['train_dataloader']['dataset']['img_folder'] = dataset_yaml_info["train_img_dir"]
