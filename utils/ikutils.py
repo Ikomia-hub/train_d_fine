@@ -111,9 +111,9 @@ def _create_dataset_yaml(
 
 def _dataset_exists(data_dict, dataset_folder, split_ratio):
     """
-    check to see if a COCO-style dataset folder already exists
+    Check to see if a COCO-style dataset folder already exists
     and matches the data in 'data_dict' (including class count, image count, etc.).
-    If mismatch is found, the entire 'dataset_folder' will be removed to rebuild.
+    If a mismatch is found, the entire 'dataset_folder' will be removed to rebuild.
     """
 
     dataset_yaml_path = os.path.join(dataset_folder, "dataset.yaml")
@@ -131,6 +131,7 @@ def _dataset_exists(data_dict, dataset_folder, split_ratio):
         train_annot_file = existing_info["train_annot_file"]
         val_annot_file = existing_info["val_annot_file"]
         if not os.path.exists(train_annot_file) or not os.path.exists(val_annot_file):
+            print("Annotation files missing. Removing dataset folder.")
             shutil.rmtree(dataset_folder)
             return False
 
@@ -138,29 +139,34 @@ def _dataset_exists(data_dict, dataset_folder, split_ratio):
         train_img_dir = existing_info["train_img_dir"]
         val_img_dir = existing_info["val_img_dir"]
         if not os.path.exists(train_img_dir) or not os.path.exists(val_img_dir):
+            print("Image directories missing. Removing dataset folder.")
             shutil.rmtree(dataset_folder)
             return False
 
         # Check if the number of classes (nc) matches
         categories_map = data_dict["metadata"]["category_names"]
         if len(categories_map) != existing_info["nc"]:
+            print("Mismatch in number of classes. Removing dataset folder.")
             shutil.rmtree(dataset_folder)
             return False
 
         # Check if len(names) matches
         if len(categories_map) != len(existing_info["names"]):
+            print("Mismatch in category names. Removing dataset folder.")
             shutil.rmtree(dataset_folder)
             return False
 
         # Check the number of images in train/val folders
         images = data_dict["images"]
-        val_size = int((1 - split_ratio) * len(images))
-        train_size = int(len(images) - val_size)
+        split_index = int(len(images) * split_ratio)
+        train_size = split_index
+        val_size = len(images) - split_index
 
-        train_files_count = int(len(os.listdir(train_img_dir)))
-        val_files_count = int(len(os.listdir(val_img_dir)))
+        train_files_count = len(os.listdir(train_img_dir))
+        val_files_count = len(os.listdir(val_img_dir))
 
         if train_files_count != train_size or val_files_count != val_size:
+            print("Mismatch in image counts. Removing dataset folder.")
             shutil.rmtree(dataset_folder)
             return False
 
@@ -168,8 +174,8 @@ def _dataset_exists(data_dict, dataset_folder, split_ratio):
         return True
 
     except Exception as e:
-        # If any error arises, we remove and return False
-        print(f"Error reading or validating existing dataset: {e}")
+        print(
+            f"Error reading or validating existing dataset: {e}. Removing dataset folder.")
         shutil.rmtree(dataset_folder)
         return False
 
