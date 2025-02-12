@@ -148,7 +148,7 @@ class TrainDFine(dnntrain.TrainProcess):
             # Set input size
             if param.cfg["input_size"] % 128 != 0:
                 size = param.cfg["input_size"] // 128 * 128
-            print("Updating input size to {} to be a multiple of 128".format(size))
+                print("Updating input size to {} to be a multiple of 128".format(size))
             cfg.yaml_cfg['eval_spatial_size'] = size, size
             cfg.yaml_cfg['train_dataloader']['collate_fn']['base_size'] = size
             cfg.yaml_cfg['train_dataloader']['dataset']['transforms']['ops'][5]['size'] = size, size
