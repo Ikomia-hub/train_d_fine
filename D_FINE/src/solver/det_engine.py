@@ -32,6 +32,19 @@ LOGGER = logging.getLogger(__name__)
 PREFIX = "[MLFLOW]"
 
 
+def _move_to_device(data, device: torch.device):
+    """Recursively move tensor-like objects to device, keep metadata as-is."""
+    if isinstance(data, torch.Tensor):
+        return data.to(device)
+    if isinstance(data, dict):
+        return {k: _move_to_device(v, device) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_move_to_device(v, device) for v in data]
+    if isinstance(data, tuple):
+        return tuple(_move_to_device(v, device) for v in data)
+    return data
+
+
 def train_one_epoch(
     model: torch.nn.Module,
     criterion: torch.nn.Module,
@@ -81,7 +94,7 @@ def train_one_epoch(
 
     for i, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         samples = samples.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        targets = [_move_to_device(t, device) for t in targets]
         global_step = epoch * dataset_size + i  # global step across epochs
 
         metas = dict(
@@ -222,7 +235,7 @@ def evaluate(
 
     for samples, targets in metric_logger.log_every(data_loader, 10, header):
         samples = samples.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        targets = [_move_to_device(t, device) for t in targets]
 
         outputs = model(samples)
 

@@ -207,7 +207,7 @@ class TrainDFineFactory(dataprocess.CTaskFactory):
         self.info.short_description = "Train D-FINE models"
         # relative path -> as displayed in Ikomia Studio algorithm tree
         self.info.path = "Plugins/Python/Detection"
-        self.info.version = "1.0.0"
+        self.info.version = "2.0.0"
         self.info.icon_path = "images/icon.png"
         self.info.authors = "Y. Peng, H. Li, P. Wu, Y. Zhang, X. Sun and F. Wu"
         self.info.article = "D-FINE: Redefine Regression Task in DETRs as Fine-grained Distribution Refinement"
@@ -216,7 +216,7 @@ class TrainDFineFactory(dataprocess.CTaskFactory):
         self.info.license = "Apache 2.0"
 
         # Ikomia API compatibility
-        self.info.min_ikomia_version = "0.13.0"
+        self.info.min_ikomia_version = "0.15.0"
 
         # Python compatibility
         self.info.min_python_version = "3.11.0"

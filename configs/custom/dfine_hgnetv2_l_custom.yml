@@ -1,6 +1,6 @@
 __include__: [
   '../dataset/custom_detection.yml',
-  '../../runtime.yml',
+  '../runtime.yml',
   '../include/dataloader.yml',
   '../include/optimizer.yml',
   '../include/dfine_hgnetv2.yml',
