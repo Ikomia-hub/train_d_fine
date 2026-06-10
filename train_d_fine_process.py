@@ -216,7 +216,7 @@ class TrainDFineFactory(dataprocess.CTaskFactory):
         self.info.license = "Apache 2.0"
 
         # Ikomia API compatibility
-        self.info.min_ikomia_version = "0.15.0"
+        self.info.min_ikomia_version = "0.16.1"
 
         # Python compatibility
         self.info.min_python_version = "3.11.0"
